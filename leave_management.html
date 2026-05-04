@@ -250,7 +250,7 @@
                 <td>${item.hours}시간</td>
                 <td>${item.approval}</td>
                 <td>${escapeHTML(item.remarks)}</td>
-                <td><button class="btn-delete" onclick="deleteLeave(${item.id})">삭제</button></td>
+                <td><button class="btn-delete" onclick="deleteLeave('${item._id}')">삭제</button></td>
             `;
             leaveTableBody.appendChild(tr);
         });
