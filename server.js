@@ -28,7 +28,10 @@ db.run(`CREATE TABLE IF NOT EXISTS leaves (
 // API: 전체 휴가 데이터 조회 (GET)
 app.get('/api/leaves', (req, res) => {
     db.all('SELECT * FROM leaves ORDER BY date ASC', [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error('DB 조회 에러:', err.message);
+            return res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
+        }
         res.json(rows);
     });
 });
@@ -36,11 +39,20 @@ app.get('/api/leaves', (req, res) => {
 // API: 휴가 데이터 추가 (POST)
 app.post('/api/leaves', (req, res) => {
     const { date, type, hours, approval, remarks } = req.body;
+    
+    // 서버 단 데이터 유효성 검사 (빈 값 방지)
+    if (!date || !type || typeof hours !== 'number' || !approval) {
+        return res.status(400).json({ error: '잘못된 요청입니다. 필수 데이터가 누락되었습니다.' });
+    }
+
     db.run(
         `INSERT INTO leaves (date, type, hours, approval, remarks) VALUES (?, ?, ?, ?, ?)`,
         [date, type, hours, approval, remarks],
         function (err) {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) {
+                console.error('DB 저장 에러:', err.message);
+                return res.status(500).json({ error: '데이터 저장 중 오류가 발생했습니다.' });
+            }
             res.json({ id: this.lastID });
         }
     );
@@ -49,7 +61,10 @@ app.post('/api/leaves', (req, res) => {
 // API: 휴가 데이터 삭제 (DELETE)
 app.delete('/api/leaves/:id', (req, res) => {
     db.run(`DELETE FROM leaves WHERE id = ?`, req.params.id, function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error('DB 삭제 에러:', err.message);
+            return res.status(500).json({ error: '데이터 삭제 중 오류가 발생했습니다.' });
+        }
         res.json({ deleted: this.changes });
     });
 });

@@ -224,6 +224,15 @@
         }
     }
 
+    // XSS 방어를 위한 HTML 특수문자 이스케이프 함수
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g, function(tag) {
+            const charsToReplace = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' };
+            return charsToReplace[tag] || tag;
+        });
+    }
+
     // UI 업데이트 (테이블 및 잔여시간 계산)
     function updateUI() {
         // 테이블 초기화
@@ -240,7 +249,7 @@
                 <td>${item.type}</td>
                 <td>${item.hours}시간</td>
                 <td>${item.approval}</td>
-                <td>${item.remarks || ''}</td>
+                <td>${escapeHTML(item.remarks)}</td>
                 <td><button class="btn-delete" onclick="deleteLeave(${item.id})">삭제</button></td>
             `;
             leaveTableBody.appendChild(tr);

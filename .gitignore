@@ -1,0 +1,5 @@
+# 의존성 패키지 폴더
+node_modules/
+
+# 로컬 데이터베이스 파일
+leave_data.db
