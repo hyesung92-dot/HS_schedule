@@ -3,3 +3,6 @@ node_modules/
 
 # 로컬 데이터베이스 파일
 leave_data.db
+
+# 비밀번호가 담긴 환경변수 파일
+.env
