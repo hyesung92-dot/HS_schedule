@@ -3,7 +3,6 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 const app = express();
-const port = 3000;
 const port = process.env.PORT || 3000;
 
 // JSON 데이터 파싱 및 정적 파일(HTML 등) 서빙을 위한 미들웨어 설정
