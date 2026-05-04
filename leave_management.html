@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>육아기 단축근무자 휴가 관리표</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        .summary-box {
+            display: flex;
+            justify-content: space-between;
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .summary-box div {
+            color: #0d6efd;
+        }
+        .form-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        select, input, button {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        input[readonly] {
+            background-color: #e9ecef;
+            color: #666;
+        }
+        button {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 8px 15px;
+        }
+        button:hover {
+            background-color: #0b5ed7;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .btn-delete {
+            background-color: #dc3545;
+            padding: 4px 8px;
+            font-size: 0.9em;
+        }
+        .btn-delete:hover {
+            background-color: #bb2d3b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>육아기 단축근무자 휴가 관리표</h2>
+    
+    <!-- 요약 정보 -->
+    <div class="summary-box">
+        <div>총 휴가: 20일 (160시간)</div>
+        <div>사용한 휴가: <span id="usedHours">0</span>시간</div>
+        <div style="color: #dc3545;">잔여 휴가: <span id="remainHours">20일 (160시간)</span></div>
+    </div>
+
+    <!-- 휴가 입력 폼 -->
+    <form id="leaveForm" class="form-group">
+        <input type="date" id="leaveDate" required>
+        
+        <select id="leaveType" required>
+            <option value="">휴가 구분 선택</option>
+            <option value="연차">연차</option>
+            <option value="반차">반차</option>
+            <option value="그외">그외 (잔여시간 구두보고 등)</option>
+        </select>
+
+        <input type="number" id="leaveHours" placeholder="사용시간" required readonly>
+        <input type="text" id="approvalType" placeholder="전자결재여부" required readonly>
+        <input type="text" id="leaveRemarks" placeholder="비고 (메모)">
+        
+        <button type="submit">등록</button>
+    </form>
+
+    <!-- 휴가 사용 내역 테이블 -->
+    <table>
+        <thead>
+            <tr>
+                <th>휴가사용일</th>
+                <th>휴가구분</th>
+                <th>휴가사용시간</th>
+                <th>전자결재대상여부</th>
+                <th>비고</th>
+                <th>관리</th>
+            </tr>
+        </thead>
+        <tbody id="leaveTableBody">
+            <!-- 데이터가 여기에 추가됩니다 -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // 기본 설정값 (연차 20개 * 8시간 = 160시간)
+    const TOTAL_HOURS = 160;
+    let leaveData = [];
+
+    // DOM 요소 선택
+    const leaveForm = document.getElementById('leaveForm');
+    const leaveType = document.getElementById('leaveType');
+    const leaveDate = document.getElementById('leaveDate');
+    const leaveHours = document.getElementById('leaveHours');
+    const approvalType = document.getElementById('approvalType');
+    const leaveRemarks = document.getElementById('leaveRemarks');
+    const leaveTableBody = document.getElementById('leaveTableBody');
+    const usedHoursEl = document.getElementById('usedHours');
+    const remainHoursEl = document.getElementById('remainHours');
+
+    // 초기 데이터 불러오기
+    document.addEventListener('DOMContentLoaded', fetchLeaves);
+
+    async function fetchLeaves() {
+        const response = await fetch('/api/leaves');
+        leaveData = await response.json();
+        updateUI();
+    }
+
+    // 휴가 구분 변경 시 자동 매핑 로직
+    leaveType.addEventListener('change', function() {
+        const type = this.value;
+        if (type === '연차') {
+            leaveHours.value = 6;
+            leaveHours.readOnly = true;
+            approvalType.value = '대상 (Y)';
+            approvalType.readOnly = true;
+        } else if (type === '반차') {
+            leaveHours.value = 3;
+            leaveHours.readOnly = true;
+            approvalType.value = '대상 (Y)';
+            approvalType.readOnly = true;
+        } else if (type === '그외') {
+            leaveHours.value = ''; // 사용자가 직접 입력하도록 비움
+            leaveHours.readOnly = false;
+            leaveHours.focus();
+            approvalType.value = '비대상 (N - 구두보고)';
+            approvalType.readOnly = true;
+        } else {
+            leaveHours.value = '';
+            approvalType.value = '';
+            leaveHours.readOnly = true;
+        }
+    });
+
+    // 폼 제출(등록) 처리
+    leaveForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const newLeave = {
+            date: leaveDate.value,
+            type: leaveType.value,
+            hours: parseInt(leaveHours.value, 10),
+            approval: approvalType.value,
+            remarks: leaveRemarks.value
+        };
+
+        try {
+            const response = await fetch('/api/leaves', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newLeave)
+            });
+            if (response.ok) {
+                await fetchLeaves(); // DB 저장 후 최신 데이터 재조회
+                leaveForm.reset();
+                leaveHours.readOnly = true;
+            }
+        } catch (error) {
+            console.error('저장 중 오류 발생:', error);
+        }
+    });
+
+    // 내역 삭제
+    async function deleteLeave(id) {
+        try {
+            const response = await fetch(`/api/leaves/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                await fetchLeaves(); // DB 삭제 후 최신 데이터 재조회
+            }
+        } catch (error) {
+            console.error('삭제 중 오류 발생:', error);
+        }
+    }
+
+    // UI 업데이트 (테이블 및 잔여시간 계산)
+    function updateUI() {
+        // 테이블 초기화
+        leaveTableBody.innerHTML = '';
+        let totalUsed = 0;
+
+        // 데이터 렌더링
+        leaveData.forEach(item => {
+            totalUsed += item.hours;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.date}</td>
+                <td>${item.type}</td>
+                <td>${item.hours}시간</td>
+                <td>${item.approval}</td>
+                <td>${item.remarks || ''}</td>
+                <td><button class="btn-delete" onclick="deleteLeave(${item.id})">삭제</button></td>
+            `;
+            leaveTableBody.appendChild(tr);
+        });
+
+        // 요약 정보 업데이트
+        usedHoursEl.textContent = totalUsed;
+        const remainHours = TOTAL_HOURS - totalUsed;
+        const remainDays = remainHours / 8;
+        remainHoursEl.textContent = `${remainDays}일 (${remainHours}시간)`;
+    }
+</script>
+
+</body>
+</html>
