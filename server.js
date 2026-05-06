@@ -10,6 +10,11 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// 기본 경로(/) 접속 시 휴가 관리표 페이지로 자동 이동
+app.get('/', (req, res) => {
+    res.redirect('/leave_management.html');
+});
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/leave_db';
 
 // MongoDB 클라우드 연결
