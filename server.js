@@ -19,10 +19,10 @@ mongoose.connect(MONGODB_URI)
 
 // 휴가 데이터 스키마 정의 (NoSQL)
 const leaveSchema = new mongoose.Schema({
-    date: String,
-    type: String,
-    hours: Number,
-    approval: String,
+    date: { type: String, required: true },
+    type: { type: String, required: true },
+    hours: { type: Number, required: true },
+    approval: { type: String, required: true },
     remarks: String
 });
 const Leave = mongoose.model('Leave', leaveSchema);
