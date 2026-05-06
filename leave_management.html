@@ -39,10 +39,10 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            align-items: center;
+        align-items: flex-end;
             flex-wrap: wrap;
         }
-        select, input, button {
+    select, input, button {
             padding: 8px;
             border: 1px solid #ccc;
             border-radius: 4px;
@@ -66,11 +66,13 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
+        table-layout: fixed;
         }
         th, td {
             border: 1px solid #dee2e6;
             padding: 12px;
             text-align: center;
+        word-wrap: break-word;
         }
         th {
             background-color: #f8f9fa;
@@ -99,32 +101,52 @@
 
     <!-- 휴가 입력 폼 -->
     <form id="leaveForm" class="form-group">
-        <input type="date" id="leaveDate" required>
-        
-        <select id="leaveType" required>
-            <option value="">휴가 구분 선택</option>
-            <option value="연차">연차</option>
-            <option value="반차">반차</option>
-            <option value="그외">그외 (잔여시간 구두보고 등)</option>
-        </select>
+        <!-- 날짜부터 전자결재여부까지 한 줄로 유지되도록 묶음 -->
+        <div style="display: flex; gap: 10px; flex-wrap: nowrap; flex: 0 1 auto;">
+            <div style="display: flex; flex-direction: column; gap: 5px; width: 120px; flex-shrink: 1;">
+                <label for="leaveDate" style="font-size: 0.85em; color: #555; font-weight: bold; white-space: nowrap;">휴가날짜</label>
+                <input type="date" id="leaveDate" required style="width: 100%; box-sizing: border-box;">
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 5px; width: 95px; flex-shrink: 1;">
+                <label for="leaveType" style="font-size: 0.85em; color: #555; font-weight: bold; white-space: nowrap;">휴가 구분</label>
+                <select id="leaveType" required style="width: 100%; box-sizing: border-box;">
+                    <option value="">선택</option>
+                    <option value="연차">연차</option>
+                    <option value="오전 반차">오전 반차</option>
+                    <option value="오후 반차">오후 반차</option>
+                    <option value="그외">그 외</option>
+                </select>
+            </div>
 
-        <input type="number" id="leaveHours" placeholder="사용시간" required readonly>
-        <input type="text" id="approvalType" placeholder="전자결재여부" required readonly>
-        <input type="text" id="leaveRemarks" placeholder="비고 (메모)">
-        
-        <button type="submit">등록</button>
+            <div style="display: flex; flex-direction: column; gap: 5px; width: 75px; flex-shrink: 0;">
+                <label for="leaveHours" style="font-size: 0.85em; color: #555; font-weight: bold; white-space: nowrap;">사용시간</label>
+                <input type="number" id="leaveHours" placeholder="시간" style="width: 100%; box-sizing: border-box;" required readonly>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 5px; width: 95px; flex-shrink: 0;">
+                <label for="approvalType" style="font-size: 0.85em; color: #555; font-weight: bold; white-space: nowrap;">전자결재여부</label>
+                <input type="text" id="approvalType" placeholder="결재" style="width: 100%; box-sizing: border-box;" required readonly>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 120px;">
+            <label for="leaveRemarks" style="font-size: 0.85em; color: #555; font-weight: bold; white-space: nowrap;">비고(메모)</label>
+            <input type="text" id="leaveRemarks" placeholder="내용 입력" style="width: 100%; box-sizing: border-box;">
+        </div>
+        <button type="submit" style="flex-shrink: 0;">등록</button>
     </form>
 
     <!-- 휴가 사용 내역 테이블 -->
     <table>
         <thead>
             <tr>
-                <th>휴가사용일</th>
-                <th>휴가구분</th>
-                <th>휴가사용시간</th>
-                <th>전자결재대상여부</th>
-                <th>비고</th>
-                <th>관리</th>
+                <th style="width: 15%;">휴가사용일</th>
+                <th style="width: 12%;">휴가구분</th>
+                <th style="width: 15%;">휴가사용시간</th>
+                <th style="width: 15%;">전자결재여부</th>
+                <th style="width: 33%;">비고</th>
+                <th style="width: 10%;">관리</th>
             </tr>
         </thead>
         <tbody id="leaveTableBody">
@@ -166,7 +188,7 @@
             leaveHours.readOnly = true;
             approvalType.value = '대상 (Y)';
             approvalType.readOnly = true;
-        } else if (type === '반차') {
+        } else if (type === '오전 반차' || type === '오후 반차') {
             leaveHours.value = 3;
             leaveHours.readOnly = true;
             approvalType.value = '대상 (Y)';
