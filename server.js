@@ -1,5 +1,7 @@
+require('dotenv').config(); // .env 파일의 환경변수를 불러오는 모듈
 const express = require('express');
 const path = require('path');
+const mongoose = require('mongoose'); // MongoDB 연동 모듈
 const app = express();
 const port = 8080; // 다른 프로젝트와 충돌하지 않도록 포트 번호 변경
 
@@ -15,41 +17,64 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'leave_management.html'));
 });
 
-// 임시 데이터베이스 역할을 할 배열 (서버를 껐다 켜면 초기화됨)
-let leaveData = [];
-let nextId = 1;
+const mongoURI = process.env.MONGODB_URI; // .env 또는 Render 환경변수에서 MongoDB 주소를 가져옴
+
+mongoose.connect(mongoURI)
+    .then(() => console.log('MongoDB에 성공적으로 연결되었습니다!'))
+    .catch(err => console.error('MongoDB 연결 실패:', err));
+
+// 휴가 데이터를 저장할 형태(스키마) 정의
+const leaveSchema = new mongoose.Schema({
+    date: String,
+    type: String,
+    hours: Number,
+    approval: String,
+    remarks: String
+});
+const Leave = mongoose.model('Leave', leaveSchema);
 
 // [API] 휴가 내역 조회
-app.get('/api/leaves', (req, res) => {
-    res.json(leaveData);
+app.get('/api/leaves', async (req, res) => {
+    try {
+        const leaves = await Leave.find();
+        res.json(leaves);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // [API] 휴가 등록
-app.post('/api/leaves', (req, res) => {
-    const newLeave = {
-        _id: String(nextId++), // HTML에서 삭제 시 _id를 사용하므로 고유 ID 생성
-        ...req.body
-    };
-    leaveData.push(newLeave);
-    res.status(201).json(newLeave);
+app.post('/api/leaves', async (req, res) => {
+    try {
+        const newLeave = new Leave(req.body);
+        await newLeave.save();
+        res.status(201).json(newLeave);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // [API] 휴가 내역 삭제
-app.delete('/api/leaves/:id', (req, res) => {
-    const id = req.params.id;
-    leaveData = leaveData.filter(leave => leave._id !== id);
-    res.status(200).send({ message: '삭제 완료' });
+app.delete('/api/leaves/:id', async (req, res) => {
+    try {
+        await Leave.findByIdAndDelete(req.params.id);
+        res.status(200).send({ message: '삭제 완료' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // [API] 휴가 내역 수정
-app.put('/api/leaves/:id', (req, res) => {
-    const id = req.params.id;
-    const index = leaveData.findIndex(leave => leave._id === id);
-    if (index !== -1) {
-        leaveData[index] = { ...leaveData[index], ...req.body };
-        res.json(leaveData[index]);
-    } else {
-        res.status(404).send({ message: '휴가를 찾을 수 없습니다.' });
+app.put('/api/leaves/:id', async (req, res) => {
+    try {
+        const updatedLeave = await Leave.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (updatedLeave) {
+            res.json(updatedLeave);
+        } else {
+            res.status(404).send({ message: '휴가를 찾을 수 없습니다.' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 

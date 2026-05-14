@@ -95,6 +95,8 @@
             background-color: #e0a800;
         }
     </style>
+    <!-- SheetJS (엑셀 다운로드용 라이브러리) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -150,6 +152,9 @@
     </form>
 
     <!-- 휴가 사용 내역 테이블 -->
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 5px;">
+        <button type="button" onclick="downloadExcel()" style="background-color: #198754; color: white; border-radius: 4px;">엑셀 다운로드</button>
+    </div>
     <table>
         <thead>
             <tr>
@@ -350,6 +355,27 @@
         const remainHours = TOTAL_HOURS - totalUsed;
         const remainDays = remainHours / 8;
         remainHoursEl.textContent = `${remainDays}일 (${remainHours}시간)`;
+    }
+
+    // 엑셀 다운로드 기능
+    function downloadExcel() {
+        // 1. 엑셀에 들어갈 데이터 배열 생성 (첫 줄은 표의 헤더)
+        const excelData = [
+            ['휴가사용일', '휴가구분', '휴가사용시간(시간)', '전자결재여부', '비고']
+        ];
+
+        // 2. 현재 화면에 있는 데이터(leaveData)를 순회하며 엑셀 행 데이터에 추가
+        leaveData.forEach(item => {
+            excelData.push([item.date, item.type, item.hours, item.approval, item.remarks || '']);
+        });
+
+        // 3. 가상의 엑셀 워크시트와 워크북 생성
+        const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "휴가내역");
+
+        // 4. 엑셀 파일 다운로드 실행
+        XLSX.writeFile(workbook, "휴가사용내역.xlsx");
     }
 </script>
 
