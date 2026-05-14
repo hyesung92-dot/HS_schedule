@@ -1,77 +1,58 @@
-require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const path = require('path');
-
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 8080; // 다른 프로젝트와 충돌하지 않도록 포트 번호 변경
 
-// JSON 데이터 파싱 및 정적 파일(HTML 등) 서빙을 위한 미들웨어 설정
+// JSON 형태의 요청 데이터를 파싱하기 위한 설정
 app.use(express.json());
+
+// 중요: 현재 폴더(__dirname)의 파일들을 브라우저에서 접근할 수 있도록 정적 폴더로 설정합니다.
+// 이 설정이 있어야 Cannot GET /leave_management.html 에러가 사라집니다.
 app.use(express.static(__dirname));
 
-// 기본 경로(/) 접속 시 휴가 관리표 페이지로 자동 이동
+// 기본 주소(http://localhost:3000)로 접속 시 자동으로 HTML 파일을 보여주도록 설정 추가
 app.get('/', (req, res) => {
-    res.redirect('/leave_management.html');
+    res.sendFile(path.join(__dirname, 'leave_management.html'));
 });
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/leave_db';
+// 임시 데이터베이스 역할을 할 배열 (서버를 껐다 켜면 초기화됨)
+let leaveData = [];
+let nextId = 1;
 
-// MongoDB 클라우드 연결
-mongoose.connect(MONGODB_URI)
-    .then(() => console.log('MongoDB 클라우드 데이터베이스에 성공적으로 연결되었습니다.'))
-    .catch(err => console.error('MongoDB 연결 실패:', err));
-
-// 휴가 데이터 스키마 정의 (NoSQL)
-const leaveSchema = new mongoose.Schema({
-    date: { type: String, required: true },
-    type: { type: String, required: true },
-    hours: { type: Number, required: true },
-    approval: { type: String, required: true },
-    remarks: String
-});
-const Leave = mongoose.model('Leave', leaveSchema);
-
-// API: 전체 휴가 데이터 조회 (GET)
-app.get('/api/leaves', async (req, res) => {
-    try {
-        const leaves = await Leave.find().sort({ date: 1 });
-        res.json(leaves);
-    } catch (err) {
-        console.error('DB 조회 에러:', err.message);
-        res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
-    }
+// [API] 휴가 내역 조회
+app.get('/api/leaves', (req, res) => {
+    res.json(leaveData);
 });
 
-// API: 휴가 데이터 추가 (POST)
-app.post('/api/leaves', async (req, res) => {
-    const { date, type, hours, approval, remarks } = req.body;
-    
-    // 서버 단 데이터 유효성 검사 (빈 값 방지)
-    if (!date || !type || typeof hours !== 'number' || !approval) {
-        return res.status(400).json({ error: '잘못된 요청입니다. 필수 데이터가 누락되었습니다.' });
-    }
-
-    try {
-        const newLeave = await Leave.create({ date, type, hours, approval, remarks });
-        res.json({ id: newLeave._id });
-    } catch (err) {
-        console.error('DB 저장 에러:', err.message);
-        res.status(500).json({ error: '데이터 저장 중 오류가 발생했습니다.' });
-    }
+// [API] 휴가 등록
+app.post('/api/leaves', (req, res) => {
+    const newLeave = {
+        _id: String(nextId++), // HTML에서 삭제 시 _id를 사용하므로 고유 ID 생성
+        ...req.body
+    };
+    leaveData.push(newLeave);
+    res.status(201).json(newLeave);
 });
 
-// API: 휴가 데이터 삭제 (DELETE)
-app.delete('/api/leaves/:id', async (req, res) => {
-    try {
-        await Leave.findByIdAndDelete(req.params.id);
-        res.json({ deleted: true });
-    } catch (err) {
-        console.error('DB 삭제 에러:', err.message);
-        res.status(500).json({ error: '데이터 삭제 중 오류가 발생했습니다.' });
+// [API] 휴가 내역 삭제
+app.delete('/api/leaves/:id', (req, res) => {
+    const id = req.params.id;
+    leaveData = leaveData.filter(leave => leave._id !== id);
+    res.status(200).send({ message: '삭제 완료' });
+});
+
+// [API] 휴가 내역 수정
+app.put('/api/leaves/:id', (req, res) => {
+    const id = req.params.id;
+    const index = leaveData.findIndex(leave => leave._id === id);
+    if (index !== -1) {
+        leaveData[index] = { ...leaveData[index], ...req.body };
+        res.json(leaveData[index]);
+    } else {
+        res.status(404).send({ message: '휴가를 찾을 수 없습니다.' });
     }
 });
 
 app.listen(port, () => {
-    console.log(`서버가 실행되었습니다: http://localhost:${port}/leave_management.html`);
+    console.log(`서버가 정상적으로 실행되었습니다! http://localhost:${port}/leave_management.html 로 접속해보세요.`);
 });

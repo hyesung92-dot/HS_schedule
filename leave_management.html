@@ -85,6 +85,15 @@
         .btn-delete:hover {
             background-color: #bb2d3b;
         }
+        .btn-edit {
+            background-color: #ffc107;
+            color: black;
+            padding: 4px 8px;
+            font-size: 0.9em;
+        }
+        .btn-edit:hover {
+            background-color: #e0a800;
+        }
     </style>
 </head>
 <body>
@@ -134,7 +143,10 @@
             <label for="leaveRemarks" style="font-size: 0.85em; color: #555; font-weight: bold; white-space: nowrap;">비고(메모)</label>
             <input type="text" id="leaveRemarks" placeholder="내용 입력" style="width: 100%; box-sizing: border-box;">
         </div>
-        <button type="submit" style="flex-shrink: 0;">등록</button>
+        <div style="display: flex; gap: 5px; flex-shrink: 0;">
+            <button type="submit" id="submitBtn">등록</button>
+            <button type="button" id="cancelEditBtn" style="display: none; background-color: #6c757d; color: white;">취소</button>
+        </div>
     </form>
 
     <!-- 휴가 사용 내역 테이블 -->
@@ -159,6 +171,7 @@
     // 기본 설정값 (연차 20개 * 8시간 = 160시간)
     const TOTAL_HOURS = 160;
     let leaveData = [];
+    let editingId = null; // 수정 중인 휴가 ID 보관
 
     // DOM 요소 선택
     const leaveForm = document.getElementById('leaveForm');
@@ -168,6 +181,8 @@
     const approvalType = document.getElementById('approvalType');
     const leaveRemarks = document.getElementById('leaveRemarks');
     const leaveTableBody = document.getElementById('leaveTableBody');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
     const usedHoursEl = document.getElementById('usedHours');
     const remainHoursEl = document.getElementById('remainHours');
 
@@ -210,7 +225,7 @@
     leaveForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
-        const newLeave = {
+        const leavePayload = {
             date: leaveDate.value,
             type: leaveType.value,
             hours: parseInt(leaveHours.value, 10),
@@ -219,20 +234,70 @@
         };
 
         try {
-            const response = await fetch('/api/leaves', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newLeave)
-            });
-            if (response.ok) {
-                await fetchLeaves(); // DB 저장 후 최신 데이터 재조회
-                leaveForm.reset();
-                leaveHours.readOnly = true;
+            if (editingId) {
+                // 기존 내역 수정 (PUT)
+                const response = await fetch(`/api/leaves/${editingId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(leavePayload)
+                });
+                if (response.ok) {
+                    cancelEdit(); // 폼 초기화 및 수정 모드 종료
+                    await fetchLeaves(); // 최신 데이터 다시 불러오기
+                }
+            } else {
+                // 신규 등록 (POST)
+                const response = await fetch('/api/leaves', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(leavePayload)
+                });
+                if (response.ok) {
+                    leaveForm.reset();
+                    leaveHours.readOnly = true;
+                    await fetchLeaves();
+                }
             }
         } catch (error) {
             console.error('저장 중 오류 발생:', error);
         }
     });
+
+    // 내역 수정 모드로 폼에 데이터 채우기
+    function editLeave(id) {
+        const leave = leaveData.find(item => item._id === id);
+        if (!leave) return;
+
+        editingId = id;
+        leaveDate.value = leave.date;
+        leaveType.value = leave.type;
+        leaveHours.value = leave.hours;
+        approvalType.value = leave.approval;
+        leaveRemarks.value = leave.remarks;
+
+        // '그외' 항목일 경우 사용시간 입력 가능하도록 풀기
+        leaveHours.readOnly = (leave.type !== '그외');
+
+        // 버튼 디자인 변경
+        submitBtn.textContent = '수정';
+        submitBtn.style.backgroundColor = '#ffc107';
+        submitBtn.style.color = 'black';
+        cancelEditBtn.style.display = 'inline-block';
+    }
+
+    // 수정 취소 (폼 초기화)
+    function cancelEdit() {
+        editingId = null;
+        leaveForm.reset();
+        leaveHours.readOnly = true;
+        submitBtn.textContent = '등록';
+        submitBtn.style.backgroundColor = '#0d6efd';
+        submitBtn.style.color = 'white';
+        cancelEditBtn.style.display = 'none';
+    }
+
+    // 취소 버튼 이벤트 연결
+    cancelEditBtn.addEventListener('click', cancelEdit);
 
     // 내역 삭제
     async function deleteLeave(id) {
@@ -272,7 +337,10 @@
                 <td>${item.hours}시간</td>
                 <td>${item.approval}</td>
                 <td>${escapeHTML(item.remarks)}</td>
-                <td><button class="btn-delete" onclick="deleteLeave('${item._id}')">삭제</button></td>
+                <td>
+                    <button class="btn-edit" onclick="editLeave('${item._id}')">수정</button>
+                    <button class="btn-delete" onclick="deleteLeave('${item._id}')">삭제</button>
+                </td>
             `;
             leaveTableBody.appendChild(tr);
         });

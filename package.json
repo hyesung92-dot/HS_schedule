@@ -15,5 +15,13 @@
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "mongoose": "^8.2.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hyesung92-dot/HS_schedule.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hyesung92-dot/HS_schedule/issues"
+  },
+  "homepage": "https://github.com/hyesung92-dot/HS_schedule#readme"
 }
