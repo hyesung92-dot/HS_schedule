@@ -77,6 +77,19 @@
         th {
             background-color: #f8f9fa;
         }
+        .sort-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 4px;
+            font-size: 0.85em;
+            color: #0d6efd;
+            vertical-align: middle;
+        }
+        .sort-btn:hover {
+            background: none;
+            color: #0b5ed7;
+        }
         .btn-delete {
             background-color: #dc3545;
             padding: 4px 8px;
@@ -158,7 +171,7 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 15%;">휴가사용일</th>
+                <th style="width: 15%;">휴가사용일<button class="sort-btn" id="sortDateBtn" onclick="toggleSort()" title="날짜 정렬">▼</button></th>
                 <th style="width: 12%;">휴가구분</th>
                 <th style="width: 15%;">휴가사용시간</th>
                 <th style="width: 15%;">전자결재여부</th>
@@ -177,6 +190,7 @@
     const TOTAL_HOURS = 160;
     let leaveData = [];
     let editingId = null; // 수정 중인 휴가 ID 보관
+    let sortOrder = 'desc'; // 'asc' | 'desc'
 
     // DOM 요소 선택
     const leaveForm = document.getElementById('leaveForm');
@@ -325,14 +339,29 @@
         });
     }
 
+    // 날짜 정렬 토글
+    function toggleSort() {
+        sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+        const btn = document.getElementById('sortDateBtn');
+        btn.textContent = sortOrder === 'asc' ? '▲' : '▼';
+        updateUI();
+    }
+
     // UI 업데이트 (테이블 및 잔여시간 계산)
     function updateUI() {
+        // 날짜 정렬
+        const sorted = [...leaveData].sort((a, b) => {
+            if (a.date < b.date) return sortOrder === 'asc' ? -1 : 1;
+            if (a.date > b.date) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
         // 테이블 초기화
         leaveTableBody.innerHTML = '';
         let totalUsed = 0;
 
         // 데이터 렌더링
-        leaveData.forEach(item => {
+        sorted.forEach(item => {
             totalUsed += item.hours;
             
             const tr = document.createElement('tr');
