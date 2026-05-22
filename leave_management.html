@@ -175,7 +175,7 @@
                 <th style="width: 12%;">휴가구분</th>
                 <th style="width: 15%;">휴가사용시간</th>
                 <th style="width: 15%;">전자결재여부</th>
-                <th style="width: 33%;">비고</th>
+                <th style="width: 33%; text-align: left;">비고</th>
                 <th style="width: 10%;">관리</th>
             </tr>
         </thead>
@@ -370,7 +370,7 @@
                 <td>${item.type}</td>
                 <td>${item.hours}시간</td>
                 <td>${item.approval}</td>
-                <td>${escapeHTML(item.remarks)}</td>
+                <td style="text-align: left;">${escapeHTML(item.remarks)}</td>
                 <td>
                     <button class="btn-edit" onclick="editLeave('${item._id}')">수정</button>
                     <button class="btn-delete" onclick="deleteLeave('${item._id}')">삭제</button>
