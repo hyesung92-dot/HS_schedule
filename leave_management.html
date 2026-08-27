@@ -167,8 +167,8 @@
         </div>
         <div class="summary-card sw">
             <span class="summary-label">잔여연차 (단축근무)</span>
-            <span class="summary-value" id="remainSw">20일 (120시간)</span>
-            <span class="summary-sub">Y + N 전체 · 연차 6h / 반차 3h<br>사용 <span id="usedSw">0</span>시간 (<span id="usedSwDays">0</span>일)</span>
+            <span class="summary-value" id="remainSw">26.67일 (160시간)</span>
+            <span class="summary-sub">연차 <span id="remainSwLeave">120</span>시간 + 구두보고 <span id="remainSwOral">40</span>시간<br>Y + N 전체 · 사용 <span id="usedSw">0</span>시간 (<span id="usedSwDays">0</span>일)</span>
         </div>
         <div class="summary-card oral">
             <span class="summary-label">쓸 수 있는 구두보고</span>
@@ -279,6 +279,8 @@
     const usedGwEl = document.getElementById('usedGw');
     const usedGwDaysEl = document.getElementById('usedGwDays');
     const remainSwEl = document.getElementById('remainSw');
+    const remainSwLeaveEl = document.getElementById('remainSwLeave');
+    const remainSwOralEl = document.getElementById('remainSwOral');
     const usedSwEl = document.getElementById('usedSw');
     const usedSwDaysEl = document.getElementById('usedSwDays');
     const oralRemainEl = document.getElementById('oralRemain');
@@ -526,11 +528,16 @@
         usedGwDaysEl.textContent = fmtNum(usedGw / GW_HOURS_PER_DAY);
         setRemainText(remainGwEl, GW_TOTAL_HOURS - usedGw, GW_HOURS_PER_DAY);
 
+        // 단축근무 잔여 = 연차분(120h에서 Y건 차감) + 구두보고분(40h에서 N건 차감)
+        const oralRemainHours = ORAL_TOTAL_HOURS - oralUsedHours;
+        const swLeaveRemainHours = SW_TOTAL_HOURS - (usedSw - oralUsedHours);
+
         usedSwEl.textContent = fmtNum(usedSw);
         usedSwDaysEl.textContent = fmtNum(usedSw / SW_HOURS_PER_DAY);
-        setRemainText(remainSwEl, SW_TOTAL_HOURS - usedSw, SW_HOURS_PER_DAY);
+        remainSwLeaveEl.textContent = fmtNum(swLeaveRemainHours);
+        remainSwOralEl.textContent = fmtNum(oralRemainHours);
+        setRemainText(remainSwEl, swLeaveRemainHours + oralRemainHours, SW_HOURS_PER_DAY);
 
-        const oralRemainHours = ORAL_TOTAL_HOURS - oralUsedHours;
         oralRemainEl.textContent = `${fmtNum(oralRemainHours / ORAL_UNIT_HOURS)}개 (${fmtNum(oralRemainHours)}시간)`;
         oralRemainEl.classList.toggle('over', oralRemainHours < 0);
         oralTotalUnitsEl.textContent = fmtNum(ORAL_TOTAL_UNITS);
@@ -569,11 +576,13 @@
             '', '잔여(그룹웨어)', `${fmtNum((GW_TOTAL_HOURS - usedGw) / GW_HOURS_PER_DAY)}일`,
             '', GW_TOTAL_HOURS - usedGw, '전자결재 Y만 / 연차 8h·반차 4h', ''
         ]);
-        excelData.push([
-            '', '잔여(단축근무)', `${fmtNum((SW_TOTAL_HOURS - usedSw) / SW_HOURS_PER_DAY)}일`,
-            SW_TOTAL_HOURS - usedSw, '', 'Y+N 전체 / 연차 6h·반차 3h', ''
-        ]);
         const oralRemainHours = ORAL_TOTAL_HOURS - oralUsedHours;
+        const swLeaveRemainHours = SW_TOTAL_HOURS - (usedSw - oralUsedHours);
+        const swRemainHours = swLeaveRemainHours + oralRemainHours;
+        excelData.push([
+            '', '잔여(단축근무)', `${fmtNum(swRemainHours / SW_HOURS_PER_DAY)}일`,
+            swRemainHours, '', `연차 ${fmtNum(swLeaveRemainHours)}시간 + 구두보고 ${fmtNum(oralRemainHours)}시간`, ''
+        ]);
         excelData.push([
             '', '쓸 수 있는 구두보고', `${fmtNum(oralRemainHours / ORAL_UNIT_HOURS)}개`,
             oralRemainHours, '', `연초 부여 ${fmtNum(ORAL_TOTAL_HOURS)}시간 - 사용 ${fmtNum(oralUsedHours)}시간 (1개 = ${ORAL_UNIT_HOURS}시간)`, ''
