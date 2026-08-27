@@ -11,7 +11,7 @@
             background-color: #f8f9fa;
         }
         .container {
-            max-width: 800px;
+            max-width: 980px;
             margin: auto;
             background: white;
             padding: 20px;
@@ -23,17 +23,54 @@
             color: #333;
         }
         .summary-box {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
             background-color: #e9ecef;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 1.1em;
         }
-        .summary-box div {
-            color: #0d6efd;
+        .summary-card {
+            background: white;
+            border-radius: 6px;
+            padding: 10px 12px;
+            border-left: 4px solid #adb5bd;
+        }
+        .summary-card.gw { border-left-color: #0d6efd; }
+        .summary-card.sw { border-left-color: #dc3545; }
+        .summary-card.oral { border-left-color: #fd7e14; }
+        .summary-label {
+            display: block;
+            font-size: 0.8em;
+            color: #6c757d;
+            font-weight: bold;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+        .summary-value {
+            display: block;
+            font-size: 1.25em;
+            font-weight: bold;
+            color: #212529;
+            line-height: 1.3;
+        }
+        .summary-card.gw .summary-value { color: #0d6efd; }
+        .summary-card.sw .summary-value { color: #dc3545; }
+        .summary-card.oral .summary-value { color: #fd7e14; }
+        .summary-value.over { color: #dc3545 !important; }
+        .summary-sub {
+            display: block;
+            font-size: 0.72em;
+            color: #868e96;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        .cell-sub {
+            display: block;
+            font-size: 0.75em;
+            color: #868e96;
+            margin-top: 2px;
         }
         .form-group {
             display: flex;
@@ -118,9 +155,26 @@
     
     <!-- 요약 정보 -->
     <div class="summary-box">
-        <div>총 휴가: 20일 (160시간)</div>
-        <div>사용한 휴가: <span id="usedHours">0</span>시간</div>
-        <div style="color: #dc3545;">잔여 휴가: <span id="remainHours">20일 (160시간)</span></div>
+        <div class="summary-card">
+            <span class="summary-label">총 부여 연차</span>
+            <span class="summary-value" id="totalDays">20일</span>
+            <span class="summary-sub">그룹웨어 <span id="gwTotalHours">160</span>시간 / 단축근무 <span id="swTotalHours">120</span>시간</span>
+        </div>
+        <div class="summary-card gw">
+            <span class="summary-label">잔여연차 (그룹웨어)</span>
+            <span class="summary-value" id="remainGw">20일 (160시간)</span>
+            <span class="summary-sub">전자결재 Y만 · 연차 8h / 반차 4h<br>사용 <span id="usedGw">0</span>시간 (<span id="usedGwDays">0</span>일)</span>
+        </div>
+        <div class="summary-card sw">
+            <span class="summary-label">잔여연차 (단축근무)</span>
+            <span class="summary-value" id="remainSw">20일 (120시간)</span>
+            <span class="summary-sub">Y + N 전체 · 연차 6h / 반차 3h<br>사용 <span id="usedSw">0</span>시간 (<span id="usedSwDays">0</span>일)</span>
+        </div>
+        <div class="summary-card oral">
+            <span class="summary-label">쓸 수 있는 구두보고</span>
+            <span class="summary-value" id="oralRemain">6.67개 (40시간)</span>
+            <span class="summary-sub">연초 부여 <span id="oralTotalUnits">6.67</span>개 (<span id="oralTotalHours">40</span>시간) · 1개 = 6시간<br>사용 <span id="oralUsedHours">0</span>시간 (<span id="oralUsedCount">0</span>건)</span>
+        </div>
     </div>
 
     <!-- 휴가 입력 폼 -->
@@ -171,11 +225,12 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 15%; white-space: nowrap;">휴가사용일 <button class="sort-btn" id="sortDateBtn" onclick="toggleSort()" title="날짜 정렬">▼</button></th>
-                <th style="width: 12%;">휴가구분</th>
-                <th style="width: 15%;">휴가사용시간</th>
+                <th style="width: 6%;">No.</th>
+                <th style="width: 14%; white-space: nowrap;">휴가사용일 <button class="sort-btn" id="sortDateBtn" onclick="toggleSort()" title="날짜 정렬">▼</button></th>
+                <th style="width: 11%;">휴가구분</th>
+                <th style="width: 14%;">휴가사용시간</th>
                 <th style="width: 15%;">전자결재여부</th>
-                <th style="width: 33%;">비고</th>
+                <th style="width: 30%;">비고</th>
                 <th style="width: 10%;">관리</th>
             </tr>
         </thead>
@@ -186,8 +241,23 @@
 </div>
 
 <script>
-    // 기본 설정값 (연차 20개 * 8시간 = 160시간)
-    const TOTAL_HOURS = 160;
+    // 기본 설정값
+    // 회사에서 부여받은 연차는 20일. 단, 1일을 몇 시간으로 환산하느냐가 두 가지로 갈린다.
+    //  - 그룹웨어 기준: 통상근로 1일 = 8시간 (연차 8h / 반차 4h), 전자결재 Y 건만 차감
+    //  - 단축근무 기준: 단축근로 1일 = 6시간 (연차 6h / 반차 3h), 결재 Y/N 전부 차감
+    const TOTAL_DAYS = 20;
+    const GW_HOURS_PER_DAY = 8;
+    const SW_HOURS_PER_DAY = 6;
+    const GW_TOTAL_HOURS = TOTAL_DAYS * GW_HOURS_PER_DAY; // 160
+    const SW_TOTAL_HOURS = TOTAL_DAYS * SW_HOURS_PER_DAY; // 120
+    // 연차 1개는 그룹웨어 8h 중 6h만 실제로 쓰므로 나머지 2h가 구두보고 몫이다.
+    // 그 몫을 연초에 통째로(20일 x 2h = 40시간) 부여받고, 구두보고 건을 쓸 때마다 차감한다.
+    // 개수는 단축근무 1일(6시간)을 1개로 환산해서 센다.
+    const ORAL_TOTAL_HOURS = GW_TOTAL_HOURS - SW_TOTAL_HOURS;          // 40시간
+    const ORAL_UNIT_HOURS = SW_HOURS_PER_DAY;                          // 1개 = 6시간
+    const ORAL_TOTAL_UNITS = ORAL_TOTAL_HOURS / ORAL_UNIT_HOURS;       // 6.67개
+    const HALF_TYPES = ['오전 반차', '오후 반차'];
+
     let leaveData = [];
     let editingId = null; // 수정 중인 휴가 ID 보관
     let sortOrder = 'desc'; // 'asc' | 'desc'
@@ -202,8 +272,20 @@
     const leaveTableBody = document.getElementById('leaveTableBody');
     const submitBtn = document.getElementById('submitBtn');
     const cancelEditBtn = document.getElementById('cancelEditBtn');
-    const usedHoursEl = document.getElementById('usedHours');
-    const remainHoursEl = document.getElementById('remainHours');
+    const totalDaysEl = document.getElementById('totalDays');
+    const gwTotalHoursEl = document.getElementById('gwTotalHours');
+    const swTotalHoursEl = document.getElementById('swTotalHours');
+    const remainGwEl = document.getElementById('remainGw');
+    const usedGwEl = document.getElementById('usedGw');
+    const usedGwDaysEl = document.getElementById('usedGwDays');
+    const remainSwEl = document.getElementById('remainSw');
+    const usedSwEl = document.getElementById('usedSw');
+    const usedSwDaysEl = document.getElementById('usedSwDays');
+    const oralRemainEl = document.getElementById('oralRemain');
+    const oralTotalUnitsEl = document.getElementById('oralTotalUnits');
+    const oralTotalHoursEl = document.getElementById('oralTotalHours');
+    const oralUsedHoursEl = document.getElementById('oralUsedHours');
+    const oralUsedCountEl = document.getElementById('oralUsedCount');
 
     // 초기 데이터 불러오기
     document.addEventListener('DOMContentLoaded', fetchLeaves);
@@ -347,28 +429,84 @@
         updateUI();
     }
 
-    // UI 업데이트 (테이블 및 잔여시간 계산)
-    function updateUI() {
-        // 날짜 정렬
-        const sorted = [...leaveData].sort((a, b) => {
+    // 날짜 기준 정렬된 사본 반환
+    function getSortedData() {
+        return [...leaveData].sort((a, b) => {
             if (a.date < b.date) return sortOrder === 'asc' ? -1 : 1;
             if (a.date > b.date) return sortOrder === 'asc' ? 1 : -1;
             return 0;
         });
+    }
+
+    // 전자결재 대상(Y) 여부 판정
+    // '비대상'에도 '대상'이 포함되므로 문자열 포함 검사 대신 (Y)/(N 패턴으로 판단한다.
+    function isEApproved(item) {
+        const approval = String(item.approval || '');
+        if (/\(\s*Y/.test(approval)) return true;
+        if (/\(\s*N/.test(approval)) return false;
+        // 결재여부가 비어있는 예전 데이터는 휴가구분으로 판단
+        return item.type === '연차' || HALF_TYPES.includes(item.type);
+    }
+
+    // 그룹웨어 기준 차감 시간 (연차 8h / 반차 4h, 결재 비대상(N)은 차감 없음)
+    function getGwHours(item) {
+        if (!isEApproved(item)) return 0;
+        if (item.type === '연차') return GW_HOURS_PER_DAY;
+        if (HALF_TYPES.includes(item.type)) return GW_HOURS_PER_DAY / 2;
+        return Number(item.hours) || 0;
+    }
+
+    // 단축근무 기준 차감 시간 (연차 6h / 반차 3h, 그 외는 입력한 시간 그대로)
+    function getSwHours(item) {
+        if (item.type === '연차') return SW_HOURS_PER_DAY;
+        if (HALF_TYPES.includes(item.type)) return SW_HOURS_PER_DAY / 2;
+        return Number(item.hours) || 0;
+    }
+
+    // 소수점 뒤 불필요한 0을 떼고 표시 (18 → '18', 18.5 → '18.5', 0.333 → '0.33')
+    function fmtNum(num) {
+        return String(Number(num.toFixed(2)));
+    }
+
+    // 잔여 일수/시간 표기 + 초과 여부 반영
+    function setRemainText(el, remainHours, hoursPerDay) {
+        el.textContent = `${fmtNum(remainHours / hoursPerDay)}일 (${fmtNum(remainHours)}시간)`;
+        el.classList.toggle('over', remainHours < 0);
+    }
+
+    // UI 업데이트 (테이블 및 잔여시간 계산)
+    function updateUI() {
+        const sorted = getSortedData();
 
         // 테이블 초기화
         leaveTableBody.innerHTML = '';
-        let totalUsed = 0;
+        let usedGw = 0;         // 그룹웨어 기준 사용 시간 (전자결재 Y만)
+        let usedSw = 0;         // 단축근무 기준 사용 시간 (Y + N 전체)
+        let oralUsedHours = 0;  // 구두보고(N)로 실제 쓴 시간
+        let oralUsedCount = 0;
 
         // 데이터 렌더링
-        sorted.forEach(item => {
-            totalUsed += item.hours;
-            
+        sorted.forEach((item, index) => {
+            const gwHours = getGwHours(item);
+            const swHours = getSwHours(item);
+            usedGw += gwHours;
+            usedSw += swHours;
+
+            if (!isEApproved(item)) {
+                oralUsedHours += swHours;
+                oralUsedCount++;
+            }
+
+            const gwCellSub = gwHours > 0
+                ? `결재 ${fmtNum(gwHours)}시간`
+                : '결재 비대상';
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td>${index + 1}</td>
                 <td>${item.date}</td>
                 <td>${item.type}</td>
-                <td>${item.hours}시간</td>
+                <td>${fmtNum(swHours)}시간<span class="cell-sub">${gwCellSub}</span></td>
                 <td>${item.approval}</td>
                 <td style="text-align: left;">${escapeHTML(item.remarks)}</td>
                 <td>
@@ -380,30 +518,73 @@
         });
 
         // 요약 정보 업데이트
-        usedHoursEl.textContent = totalUsed;
-        const remainHours = TOTAL_HOURS - totalUsed;
-        const remainDays = remainHours / 8;
-        remainHoursEl.textContent = `${remainDays}일 (${remainHours}시간)`;
+        totalDaysEl.textContent = `${TOTAL_DAYS}일`;
+        gwTotalHoursEl.textContent = GW_TOTAL_HOURS;
+        swTotalHoursEl.textContent = SW_TOTAL_HOURS;
+
+        usedGwEl.textContent = fmtNum(usedGw);
+        usedGwDaysEl.textContent = fmtNum(usedGw / GW_HOURS_PER_DAY);
+        setRemainText(remainGwEl, GW_TOTAL_HOURS - usedGw, GW_HOURS_PER_DAY);
+
+        usedSwEl.textContent = fmtNum(usedSw);
+        usedSwDaysEl.textContent = fmtNum(usedSw / SW_HOURS_PER_DAY);
+        setRemainText(remainSwEl, SW_TOTAL_HOURS - usedSw, SW_HOURS_PER_DAY);
+
+        const oralRemainHours = ORAL_TOTAL_HOURS - oralUsedHours;
+        oralRemainEl.textContent = `${fmtNum(oralRemainHours / ORAL_UNIT_HOURS)}개 (${fmtNum(oralRemainHours)}시간)`;
+        oralRemainEl.classList.toggle('over', oralRemainHours < 0);
+        oralTotalUnitsEl.textContent = fmtNum(ORAL_TOTAL_UNITS);
+        oralTotalHoursEl.textContent = fmtNum(ORAL_TOTAL_HOURS);
+        oralUsedHoursEl.textContent = fmtNum(oralUsedHours);
+        oralUsedCountEl.textContent = oralUsedCount;
     }
 
     // 엑셀 다운로드 기능
     function downloadExcel() {
         // 1. 엑셀에 들어갈 데이터 배열 생성 (첫 줄은 표의 헤더)
         const excelData = [
-            ['휴가사용일', '휴가구분', '휴가사용시간(시간)', '전자결재여부', '비고']
+            ['No.', '휴가사용일', '휴가구분', '사용시간(단축근무)', '사용시간(그룹웨어)', '전자결재여부', '비고']
         ];
 
-        // 2. 현재 화면에 있는 데이터(leaveData)를 순회하며 엑셀 행 데이터에 추가
-        leaveData.forEach(item => {
-            excelData.push([item.date, item.type, item.hours, item.approval, item.remarks || '']);
+        // 2. 화면과 같은 정렬 순서로 순회하며 엑셀 행 데이터에 추가
+        const sorted = getSortedData();
+        let usedGw = 0;
+        let usedSw = 0;
+        let oralUsedHours = 0;
+        sorted.forEach((item, index) => {
+            const gwHours = getGwHours(item);
+            const swHours = getSwHours(item);
+            usedGw += gwHours;
+            usedSw += swHours;
+            if (!isEApproved(item)) {
+                oralUsedHours += swHours;
+            }
+            excelData.push([index + 1, item.date, item.type, swHours, gwHours, item.approval, item.remarks || '']);
         });
 
-        // 3. 가상의 엑셀 워크시트와 워크북 생성
+        // 3. 합계 및 잔여 요약 행 추가
+        excelData.push([]);
+        excelData.push(['', '사용 합계', '', usedSw, usedGw, '', '']);
+        excelData.push([
+            '', '잔여(그룹웨어)', `${fmtNum((GW_TOTAL_HOURS - usedGw) / GW_HOURS_PER_DAY)}일`,
+            '', GW_TOTAL_HOURS - usedGw, '전자결재 Y만 / 연차 8h·반차 4h', ''
+        ]);
+        excelData.push([
+            '', '잔여(단축근무)', `${fmtNum((SW_TOTAL_HOURS - usedSw) / SW_HOURS_PER_DAY)}일`,
+            SW_TOTAL_HOURS - usedSw, '', 'Y+N 전체 / 연차 6h·반차 3h', ''
+        ]);
+        const oralRemainHours = ORAL_TOTAL_HOURS - oralUsedHours;
+        excelData.push([
+            '', '쓸 수 있는 구두보고', `${fmtNum(oralRemainHours / ORAL_UNIT_HOURS)}개`,
+            oralRemainHours, '', `연초 부여 ${fmtNum(ORAL_TOTAL_HOURS)}시간 - 사용 ${fmtNum(oralUsedHours)}시간 (1개 = ${ORAL_UNIT_HOURS}시간)`, ''
+        ]);
+
+        // 4. 가상의 엑셀 워크시트와 워크북 생성
         const worksheet = XLSX.utils.aoa_to_sheet(excelData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "휴가내역");
 
-        // 4. 엑셀 파일 다운로드 실행
+        // 5. 엑셀 파일 다운로드 실행
         XLSX.writeFile(workbook, "휴가사용내역.xlsx");
     }
 </script>
