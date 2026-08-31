@@ -3,7 +3,9 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose'); // MongoDB 연동 모듈
 const app = express();
-const port = 8080; // 다른 프로젝트와 충돌하지 않도록 포트 번호 변경
+// Render 같은 배포 환경은 PORT 환경변수로 포트를 지정하므로 그 값을 우선 사용한다.
+// 로컬에서는 다른 프로젝트와 충돌하지 않도록 8080을 쓴다.
+const port = process.env.PORT || 8080;
 
 // JSON 형태의 요청 데이터를 파싱하기 위한 설정
 app.use(express.json());
