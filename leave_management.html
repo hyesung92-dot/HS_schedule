@@ -167,13 +167,13 @@
         </div>
         <div class="summary-card sw">
             <span class="summary-label">잔여연차 (단축근무)</span>
-            <span class="summary-value" id="remainSw">26.67일 (160시간)</span>
-            <span class="summary-sub">연차 <span id="remainSwLeave">120</span>시간 + 구두보고 <span id="remainSwOral">40</span>시간<br>Y + N 전체 · 사용 <span id="usedSw">0</span>시간 (<span id="usedSwDays">0</span>일)</span>
+            <span class="summary-value" id="remainSw">20일 (120시간)</span>
+            <span class="summary-sub">연차 <span id="remainSwLeave">120</span>시간 + 구두보고 <span id="remainSwOral">0</span>시간<br>Y + N 전체 · 사용 <span id="usedSw">0</span>시간 (<span id="usedSwDays">0</span>일)</span>
         </div>
         <div class="summary-card oral">
             <span class="summary-label">쓸 수 있는 구두보고</span>
-            <span class="summary-value" id="oralRemain">6.67개 (40시간)</span>
-            <span class="summary-sub">연초 부여 <span id="oralTotalUnits">6.67</span>개 (<span id="oralTotalHours">40</span>시간) · 1개 = 6시간<br>사용 <span id="oralUsedHours">0</span>시간 (<span id="oralUsedCount">0</span>건)</span>
+            <span class="summary-value" id="oralRemain">0시간</span>
+            <span class="summary-sub">적립 <span id="oralEarnedHours">0</span>시간 (<span id="oralEarnedDetail">연차 0건 · 반차 0쌍</span>) · 1개 = 6시간<br>사용 <span id="oralUsedHours">0</span>시간 (<span id="oralUsedCount">0</span>건)</span>
         </div>
     </div>
 
@@ -250,12 +250,15 @@
     const SW_HOURS_PER_DAY = 6;
     const GW_TOTAL_HOURS = TOTAL_DAYS * GW_HOURS_PER_DAY; // 160
     const SW_TOTAL_HOURS = TOTAL_DAYS * SW_HOURS_PER_DAY; // 120
-    // 연차 1개는 그룹웨어 8h 중 6h만 실제로 쓰므로 나머지 2h가 구두보고 몫이다.
-    // 그 몫을 연초에 통째로(20일 x 2h = 40시간) 부여받고, 구두보고 건을 쓸 때마다 차감한다.
-    // 개수는 단축근무 1일(6시간)을 1개로 환산해서 센다.
-    const ORAL_TOTAL_HOURS = GW_TOTAL_HOURS - SW_TOTAL_HOURS;          // 40시간
+    // 구두보고는 연초에 통째로 부여받는 게 아니라, 전자결재(Y) 휴가를 쓸 때마다 적립된다.
+    //  - 연차 1건(Y): 그룹웨어 8h 중 실제로는 6h만 쓰므로 남는 2시간이 적립된다.
+    //  - 반차: 2건(Y)을 써야 2시간이 적립된다. 1건만 쓴 상태에서는 적립되지 않는다.
+    // 적립 시간이 6시간(단축근무 1일)을 채울 때마다 1개로 인정하고,
+    // 6시간을 채우지 못한 나머지는 개수 대신 시간으로만 표기한다.
+    const ORAL_HOURS_PER_ANNUAL = GW_HOURS_PER_DAY - SW_HOURS_PER_DAY; // 연차 1건 = 2시간
+    const ORAL_HALVES_PER_PAIR = 2;                                    // 반차 2건 = 1쌍
+    const ORAL_HOURS_PER_HALF_PAIR = 2;                                // 반차 1쌍 = 2시간
     const ORAL_UNIT_HOURS = SW_HOURS_PER_DAY;                          // 1개 = 6시간
-    const ORAL_TOTAL_UNITS = ORAL_TOTAL_HOURS / ORAL_UNIT_HOURS;       // 6.67개
     const HALF_TYPES = ['오전 반차', '오후 반차'];
 
     let leaveData = [];
@@ -284,8 +287,8 @@
     const usedSwEl = document.getElementById('usedSw');
     const usedSwDaysEl = document.getElementById('usedSwDays');
     const oralRemainEl = document.getElementById('oralRemain');
-    const oralTotalUnitsEl = document.getElementById('oralTotalUnits');
-    const oralTotalHoursEl = document.getElementById('oralTotalHours');
+    const oralEarnedHoursEl = document.getElementById('oralEarnedHours');
+    const oralEarnedDetailEl = document.getElementById('oralEarnedDetail');
     const oralUsedHoursEl = document.getElementById('oralUsedHours');
     const oralUsedCountEl = document.getElementById('oralUsedCount');
 
@@ -470,6 +473,30 @@
         return String(Number(num.toFixed(2)));
     }
 
+    // 전자결재(Y) 휴가에서 적립되는 구두보고 시간 계산
+    // 연차는 1건당 2시간, 반차는 2건이 모여야 2시간이 적립된다(짝이 안 맞는 1건은 대기).
+    function getOralEarned(items) {
+        let annualCount = 0;
+        let halfCount = 0;
+        items.forEach(item => {
+            if (!isEApproved(item)) return;
+            if (item.type === '연차') annualCount++;
+            else if (HALF_TYPES.includes(item.type)) halfCount++;
+        });
+        const halfPairs = Math.floor(halfCount / ORAL_HALVES_PER_PAIR);
+        const hours = annualCount * ORAL_HOURS_PER_ANNUAL + halfPairs * ORAL_HOURS_PER_HALF_PAIR;
+        return { annualCount, halfCount, halfPairs, hours };
+    }
+
+    // 구두보고 표기: 6시간을 채운 만큼만 개수로 세고, 남는 시간은 시간으로만 표기
+    function fmtOral(hours) {
+        if (hours < 0) return `${fmtNum(hours)}시간`;
+        const units = Math.floor(hours / ORAL_UNIT_HOURS);
+        const rest = hours - units * ORAL_UNIT_HOURS;
+        if (units === 0) return `${fmtNum(rest)}시간`;
+        return rest > 0 ? `${units}개 + ${fmtNum(rest)}시간` : `${units}개`;
+    }
+
     // 잔여 일수/시간 표기 + 초과 여부 반영
     function setRemainText(el, remainHours, hoursPerDay) {
         el.textContent = `${fmtNum(remainHours / hoursPerDay)}일 (${fmtNum(remainHours)}시간)`;
@@ -528,8 +555,9 @@
         usedGwDaysEl.textContent = fmtNum(usedGw / GW_HOURS_PER_DAY);
         setRemainText(remainGwEl, GW_TOTAL_HOURS - usedGw, GW_HOURS_PER_DAY);
 
-        // 단축근무 잔여 = 연차분(120h에서 Y건 차감) + 구두보고분(40h에서 N건 차감)
-        const oralRemainHours = ORAL_TOTAL_HOURS - oralUsedHours;
+        // 단축근무 잔여 = 연차분(120h에서 Y건 차감) + 구두보고분(적립분에서 N건 차감)
+        const oralEarned = getOralEarned(sorted);
+        const oralRemainHours = oralEarned.hours - oralUsedHours;
         const swLeaveRemainHours = SW_TOTAL_HOURS - (usedSw - oralUsedHours);
 
         usedSwEl.textContent = fmtNum(usedSw);
@@ -538,10 +566,11 @@
         remainSwOralEl.textContent = fmtNum(oralRemainHours);
         setRemainText(remainSwEl, swLeaveRemainHours + oralRemainHours, SW_HOURS_PER_DAY);
 
-        oralRemainEl.textContent = `${fmtNum(oralRemainHours / ORAL_UNIT_HOURS)}개 (${fmtNum(oralRemainHours)}시간)`;
+        oralRemainEl.textContent = fmtOral(oralRemainHours);
         oralRemainEl.classList.toggle('over', oralRemainHours < 0);
-        oralTotalUnitsEl.textContent = fmtNum(ORAL_TOTAL_UNITS);
-        oralTotalHoursEl.textContent = fmtNum(ORAL_TOTAL_HOURS);
+        oralEarnedHoursEl.textContent = fmtNum(oralEarned.hours);
+        oralEarnedDetailEl.textContent = `연차 ${oralEarned.annualCount}건 · 반차 ${oralEarned.halfPairs}쌍`
+            + (oralEarned.halfCount % ORAL_HALVES_PER_PAIR ? ' (반차 1건 대기)' : '');
         oralUsedHoursEl.textContent = fmtNum(oralUsedHours);
         oralUsedCountEl.textContent = oralUsedCount;
     }
@@ -576,7 +605,8 @@
             '', '잔여(그룹웨어)', `${fmtNum((GW_TOTAL_HOURS - usedGw) / GW_HOURS_PER_DAY)}일`,
             '', GW_TOTAL_HOURS - usedGw, '전자결재 Y만 / 연차 8h·반차 4h', ''
         ]);
-        const oralRemainHours = ORAL_TOTAL_HOURS - oralUsedHours;
+        const oralEarned = getOralEarned(sorted);
+        const oralRemainHours = oralEarned.hours - oralUsedHours;
         const swLeaveRemainHours = SW_TOTAL_HOURS - (usedSw - oralUsedHours);
         const swRemainHours = swLeaveRemainHours + oralRemainHours;
         excelData.push([
@@ -584,8 +614,9 @@
             swRemainHours, '', `연차 ${fmtNum(swLeaveRemainHours)}시간 + 구두보고 ${fmtNum(oralRemainHours)}시간`, ''
         ]);
         excelData.push([
-            '', '쓸 수 있는 구두보고', `${fmtNum(oralRemainHours / ORAL_UNIT_HOURS)}개`,
-            oralRemainHours, '', `연초 부여 ${fmtNum(ORAL_TOTAL_HOURS)}시간 - 사용 ${fmtNum(oralUsedHours)}시간 (1개 = ${ORAL_UNIT_HOURS}시간)`, ''
+            '', '쓸 수 있는 구두보고', fmtOral(oralRemainHours),
+            oralRemainHours, '',
+            `적립 ${fmtNum(oralEarned.hours)}시간 (연차 ${oralEarned.annualCount}건 · 반차 ${oralEarned.halfPairs}쌍) - 사용 ${fmtNum(oralUsedHours)}시간 (1개 = ${ORAL_UNIT_HOURS}시간)`, ''
         ]);
 
         // 4. 가상의 엑셀 워크시트와 워크북 생성
