@@ -226,11 +226,11 @@
         <thead>
             <tr>
                 <th style="width: 6%;">No.</th>
-                <th style="width: 14%; white-space: nowrap;">휴가사용일 <button class="sort-btn" id="sortDateBtn" onclick="toggleSort()" title="날짜 정렬">▼</button></th>
+                <th style="width: 17%; white-space: nowrap;">휴가사용일 <button class="sort-btn" id="sortDateBtn" onclick="toggleSort()" title="날짜 정렬">▼</button></th>
                 <th style="width: 11%;">휴가구분</th>
                 <th style="width: 14%;">휴가사용시간</th>
                 <th style="width: 15%;">전자결재여부</th>
-                <th style="width: 30%;">비고</th>
+                <th style="width: 27%;">비고</th>
                 <th style="width: 10%;">관리</th>
             </tr>
         </thead>
@@ -541,7 +541,7 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${index + 1}</td>
-                <td>${fmtDateWithDay(item.date)}</td>
+                <td style="white-space: nowrap;">${fmtDateWithDay(item.date)}</td>
                 <td>${item.type}</td>
                 <td>${fmtNum(swHours)}시간<span class="cell-sub">${gwCellSub}</span></td>
                 <td>${item.approval}</td>
