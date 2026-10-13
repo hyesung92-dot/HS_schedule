@@ -473,6 +473,14 @@
         return String(Number(num.toFixed(2)));
     }
 
+    // 'YYYY-MM-DD' → 'YYYY-MM-DD (요일)'
+    const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+    function fmtDateWithDay(dateStr) {
+        const [y, m, d] = (dateStr || '').split('-').map(Number);
+        if (!y || !m || !d) return dateStr || '';
+        return `${dateStr} (${WEEKDAYS[new Date(y, m - 1, d).getDay()]})`;
+    }
+
     // 전자결재(Y) 휴가에서 적립되는 구두보고 시간 계산
     // 연차는 1건당 2시간, 반차는 2건이 모여야 2시간이 적립된다(짝이 안 맞는 1건은 대기).
     function getOralEarned(items) {
@@ -533,7 +541,7 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${index + 1}</td>
-                <td>${item.date}</td>
+                <td>${fmtDateWithDay(item.date)}</td>
                 <td>${item.type}</td>
                 <td>${fmtNum(swHours)}시간<span class="cell-sub">${gwCellSub}</span></td>
                 <td>${item.approval}</td>
@@ -595,7 +603,7 @@
             if (!isEApproved(item)) {
                 oralUsedHours += swHours;
             }
-            excelData.push([index + 1, item.date, item.type, swHours, gwHours, item.approval, item.remarks || '']);
+            excelData.push([index + 1, fmtDateWithDay(item.date), item.type, swHours, gwHours, item.approval, item.remarks || '']);
         });
 
         // 3. 합계 및 잔여 요약 행 추가
